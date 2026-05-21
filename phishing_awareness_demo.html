@@ -1,0 +1,89 @@
+
+<style>
+  #signup-screen, #warning-screen { transition: opacity 0.4s; }
+  #warning-screen { display: none; }
+  .demo-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 2rem; max-width: 380px; margin: 2rem auto; }
+  .field-group { margin-bottom: 1rem; }
+  .field-group label { display: block; font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; }
+  .field-group input { width: 100%; box-sizing: border-box; }
+  .submit-btn { width: 100%; padding: 10px; background: #3B6D11; color: #EAF3DE; border: none; border-radius: var(--border-radius-md); font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 0.5rem; }
+  .submit-btn:hover { background: #27500A; }
+  .site-bar { background: var(--color-background-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); padding: 10px 16px; font-size: 12px; color: var(--color-text-secondary); display: flex; align-items: center; gap: 8px; border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0; }
+  .url-bar { background: var(--color-background-tertiary); border: 0.5px solid var(--color-border-tertiary); border-radius: 20px; padding: 4px 12px; flex: 1; font-size: 12px; color: var(--color-text-tertiary); }
+  .warning-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 2rem; max-width: 480px; margin: 2rem auto; text-align: center; }
+  .warning-icon { font-size: 48px; margin-bottom: 1rem; }
+  .warning-title { font-size: 22px; font-weight: 500; color: var(--color-text-danger); margin: 0 0 1rem; }
+  .lesson-box { background: var(--color-background-danger); border-radius: var(--border-radius-md); padding: 1rem 1.25rem; margin: 1.25rem 0; text-align: left; }
+  .lesson-box p { font-size: 14px; color: var(--color-text-danger); margin: 0.4rem 0; }
+  .lesson-title { font-size: 13px; font-weight: 500; color: var(--color-text-danger); margin-bottom: 8px; }
+  .tip-list { list-style: none; padding: 0; margin: 0; }
+  .tip-list li { font-size: 14px; color: var(--color-text-secondary); padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); display: flex; align-items: flex-start; gap: 8px; }
+  .tip-list li:last-child { border-bottom: none; }
+  .tip-list i { color: var(--color-text-success); margin-top: 2px; flex-shrink: 0; }
+  .tips-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 1rem 1.25rem; margin-top: 1.25rem; text-align: left; }
+</style>
+
+<div id="signup-screen">
+  <div class="demo-card">
+    <div class="site-bar">
+      <i class="ti ti-lock" aria-hidden="true" style="font-size:14px;color:var(--color-text-tertiary)"></i>
+      <div class="url-bar">totally-legit-site.com/signup</div>
+    </div>
+    <div style="padding-top: 1.5rem;">
+      <h2 style="font-size:20px;font-weight:500;margin:0 0 0.25rem;">Create an account</h2>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 1.5rem;">It's free and takes 30 seconds.</p>
+      <div class="field-group">
+        <label for="demo-user">Username</label>
+        <input type="text" id="demo-user" placeholder="e.g. cooluser99" autocomplete="off" />
+      </div>
+      <div class="field-group">
+        <label for="demo-pass">Password</label>
+        <input type="password" id="demo-pass" placeholder="Choose a password" autocomplete="off" />
+      </div>
+      <button class="submit-btn" onclick="showWarning()">Create account</button>
+      <p style="font-size:11px;color:var(--color-text-tertiary);margin-top:0.75rem;text-align:center;">By signing up you agree to our Terms & Privacy Policy</p>
+    </div>
+  </div>
+</div>
+
+<div id="warning-screen">
+  <div class="warning-card">
+    <div class="warning-icon">⚠️</div>
+    <h2 class="warning-title">Never do that on a real site you don't trust!</h2>
+    <p style="font-size:15px;color:var(--color-text-secondary);margin:0 0 1rem;">This was a harmless demo — nothing was saved or sent. But on a real malicious site, here's what just happened:</p>
+    <div class="lesson-box">
+      <p class="lesson-title"><i class="ti ti-alert-triangle" aria-hidden="true"></i> What a phishing site does with your input</p>
+      <p><i class="ti ti-circle-dot" aria-hidden="true"></i> Captures your username &amp; password the moment you type</p>
+      <p><i class="ti ti-circle-dot" aria-hidden="true"></i> Sends them silently to the attacker's server or email</p>
+      <p><i class="ti ti-circle-dot" aria-hidden="true"></i> Stores credentials in a database to try on other sites</p>
+      <p><i class="ti ti-circle-dot" aria-hidden="true"></i> May redirect you to the real site so you never suspect</p>
+    </div>
+    <div class="tips-card">
+      <p style="font-size:13px;font-weight:500;margin:0 0 10px;color:var(--color-text-primary)">How to protect yourself</p>
+      <ul class="tip-list">
+        <li><i class="ti ti-check" aria-hidden="true"></i>Check the URL carefully before entering any credentials</li>
+        <li><i class="ti ti-check" aria-hidden="true"></i>Use a password manager — it won't autofill on fake domains</li>
+        <li><i class="ti ti-check" aria-hidden="true"></i>Enable two-factor authentication on important accounts</li>
+        <li><i class="ti ti-check" aria-hidden="true"></i>Never reuse passwords across sites</li>
+        <li><i class="ti ti-check" aria-hidden="true"></i>When in doubt, navigate directly — don't click email links</li>
+      </ul>
+    </div>
+    <button onclick="reset()" style="margin-top:1.25rem;font-size:13px;color:var(--color-text-secondary);background:none;border:none;cursor:pointer;text-decoration:underline;">← Try the demo again</button>
+  </div>
+</div>
+
+<script>
+function showWarning() {
+  const u = document.getElementById('demo-user').value.trim();
+  const p = document.getElementById('demo-pass').value.trim();
+  if (!u || !p) { alert('Fill in both fields to see the demo.'); return; }
+  document.getElementById('signup-screen').style.display = 'none';
+  document.getElementById('warning-screen').style.display = 'block';
+}
+function reset() {
+  document.getElementById('demo-user').value = '';
+  document.getElementById('demo-pass').value = '';
+  document.getElementById('signup-screen').style.display = 'block';
+  document.getElementById('warning-screen').style.display = 'none';
+}
+</script>
