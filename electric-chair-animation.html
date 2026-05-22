@@ -1,0 +1,293 @@
+
+<style>
+  #scene { display: flex; flex-direction: column; align-items: center; padding: 1rem 0; }
+  #startBtn {
+    margin-bottom: 1rem;
+    padding: 10px 28px;
+    font-size: 15px;
+    font-weight: 500;
+    background: #c0392b;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  #startBtn:hover { background: #a93226; }
+  #startBtn:disabled { background: #888; cursor: default; }
+  #status { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 0.5rem; min-height: 20px; }
+  canvas { border-radius: 8px; background: #1a1a2e; display: block; }
+</style>
+<div id="scene">
+  <h2 class="sr-only">Stick figure electric chair animation</h2>
+  <div id="status">Press start to begin the sequence.</div>
+  <button id="startBtn" onclick="startAnimation()">⚡ Start</button>
+  <canvas id="c" width="480" height="400"></canvas>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 480, H = 400;
+
+let phase = 0;
+let tick = 0;
+let animId = null;
+let zapping = false;
+
+const TEAL = '#4ecdc4';
+const CHAIR_X = 200, CHAIR_Y = 220;
+
+function drawBackground() {
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#2a2a4e';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+}
+
+function drawChair(leverDown) {
+  ctx.strokeStyle = '#8B6914';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  // seat
+  ctx.beginPath(); ctx.moveTo(CHAIR_X - 45, CHAIR_Y); ctx.lineTo(CHAIR_X + 45, CHAIR_Y); ctx.stroke();
+  // back
+  ctx.beginPath(); ctx.moveTo(CHAIR_X + 45, CHAIR_Y); ctx.lineTo(CHAIR_X + 45, CHAIR_Y - 90); ctx.stroke();
+  // seat legs
+  ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(CHAIR_X - 40, CHAIR_Y); ctx.lineTo(CHAIR_X - 40, CHAIR_Y + 50); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CHAIR_X + 35, CHAIR_Y); ctx.lineTo(CHAIR_X + 35, CHAIR_Y + 50); ctx.stroke();
+  // armrests
+  ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(CHAIR_X - 45, CHAIR_Y); ctx.lineTo(CHAIR_X - 45, CHAIR_Y - 30); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CHAIR_X - 45, CHAIR_Y - 30); ctx.lineTo(CHAIR_X - 25, CHAIR_Y - 30); ctx.stroke();
+
+  // headpiece holder on back
+  ctx.strokeStyle = '#aaa';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(CHAIR_X + 45, CHAIR_Y - 90); ctx.lineTo(CHAIR_X + 5, CHAIR_Y - 90); ctx.stroke();
+
+  // Lever on the wall (right side)
+  const leverBaseX = CHAIR_X + 130, leverBaseY = CHAIR_Y - 30;
+  ctx.fillStyle = '#555';
+  ctx.fillRect(leverBaseX - 6, leverBaseY - 20, 12, 40);
+  ctx.strokeStyle = '#e74c3c';
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  const leverAngle = leverDown ? Math.PI * 0.65 : Math.PI * 0.1;
+  ctx.beginPath();
+  ctx.moveTo(leverBaseX, leverBaseY);
+  ctx.lineTo(leverBaseX + Math.cos(leverAngle) * 40, leverBaseY + Math.sin(leverAngle) * 40);
+  ctx.stroke();
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.arc(leverBaseX + Math.cos(leverAngle) * 40, leverBaseY + Math.sin(leverAngle) * 40, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#c0392b';
+  ctx.beginPath();
+  ctx.arc(leverBaseX, leverBaseY, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wire from chair to lever
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([5, 3]);
+  ctx.beginPath();
+  ctx.moveTo(CHAIR_X + 45, CHAIR_Y - 50);
+  ctx.lineTo(leverBaseX - 6, leverBaseY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawHeadpiece(onHead, x, y) {
+  // Headpiece (metal cap)
+  if (onHead) {
+    ctx.fillStyle = '#aaa';
+    ctx.beginPath();
+    ctx.ellipse(x, y - 14, 16, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // electrode wire
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3,2]);
+    ctx.beginPath();
+    ctx.moveTo(x + 16, y - 14);
+    ctx.lineTo(CHAIR_X + 5, CHAIR_Y - 90);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function drawFigure(state, zapFlash) {
+  // states: 'walking', 'sitting', 'capOn', 'zappping'
+  const col = zapFlash ? '#fff' : TEAL;
+  ctx.strokeStyle = col;
+  ctx.fillStyle = col;
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+
+  let hx, hy; // head center
+
+  if (state === 'walking') {
+    const prog = Math.min(tick / 80, 1);
+    const startX = 420, endX = CHAIR_X - 30;
+    const px = startX + (endX - startX) * prog;
+    const py = CHAIR_Y - 70;
+    hx = px; hy = py - 40;
+    // walking bob
+    const bob = Math.sin(tick * 0.4) * 4;
+    // head
+    ctx.beginPath(); ctx.arc(hx, hy + bob, 18, 0, Math.PI * 2); ctx.fill();
+    // body
+    ctx.beginPath(); ctx.moveTo(hx, hy + 18 + bob); ctx.lineTo(hx, hy + 65 + bob); ctx.stroke();
+    // arms swing
+    const as = Math.sin(tick * 0.4) * 20;
+    ctx.beginPath(); ctx.moveTo(hx, hy + 30 + bob); ctx.lineTo(hx - 20 + as, hy + 55 + bob); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hx, hy + 30 + bob); ctx.lineTo(hx + 20 - as, hy + 55 + bob); ctx.stroke();
+    // legs
+    const ls = Math.sin(tick * 0.4) * 15;
+    ctx.beginPath(); ctx.moveTo(hx, hy + 65 + bob); ctx.lineTo(hx - 10 + ls, hy + 95 + bob); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hx, hy + 65 + bob); ctx.lineTo(hx + 10 - ls, hy + 95 + bob); ctx.stroke();
+    return { hx, hy: hy + bob };
+  }
+
+  if (state === 'sitting' || state === 'capOn' || state === 'zapping') {
+    // seated position on chair
+    hx = CHAIR_X - 5; hy = CHAIR_Y - 110;
+    const zb = (state === 'zapping' && zapFlash) ? (Math.random() * 6 - 3) : 0;
+    // head
+    ctx.beginPath(); ctx.arc(hx + zb, hy + zb, 18, 0, Math.PI * 2); ctx.fill();
+    // torso (seated, slightly back)
+    ctx.beginPath();
+    ctx.moveTo(hx + zb, hy + 18 + zb);
+    ctx.lineTo(hx + 10 + zb, hy + 65 + zb);
+    ctx.stroke();
+    // arms - left arm raised for lever if capOn phase
+    if (state === 'capOn') {
+      // right arm resting on armrest
+      ctx.beginPath(); ctx.moveTo(hx + 10 + zb, hy + 30 + zb); ctx.lineTo(CHAIR_X - 25, CHAIR_Y - 30); ctx.stroke();
+      // left arm raising to lever
+      const prog2 = Math.min((tick - 140) / 40, 1);
+      const lx2 = hx + 10 + (CHAIR_X + 155 - hx - 10) * prog2;
+      const ly2 = hy + 30 + (CHAIR_Y - 30 - hy - 30) * prog2;
+      ctx.beginPath(); ctx.moveTo(hx + 10 + zb, hy + 30 + zb); ctx.lineTo(lx2, ly2); ctx.stroke();
+    } else {
+      // both arms on armrests / zapping flail
+      ctx.beginPath(); ctx.moveTo(hx + 10 + zb, hy + 30 + zb); ctx.lineTo(CHAIR_X - 25, CHAIR_Y - 30); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hx + 10 + zb, hy + 30 + zb); ctx.lineTo(CHAIR_X + 35, CHAIR_Y - 20 + zb * 2); ctx.stroke();
+    }
+    // legs (seated - horizontal)
+    ctx.beginPath(); ctx.moveTo(hx + 10, CHAIR_Y); ctx.lineTo(CHAIR_X - 40, CHAIR_Y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(hx + 10, CHAIR_Y); ctx.lineTo(CHAIR_X + 25, CHAIR_Y); ctx.stroke();
+    return { hx: hx + zb, hy: hy + zb };
+  }
+  return { hx: 0, hy: 0 };
+}
+
+function drawLightning(fromX, fromY, toX, toY, col) {
+  ctx.strokeStyle = col || '#ffe066';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = col || '#ffe066';
+  ctx.shadowBlur = 10;
+  const steps = 8;
+  let px = fromX, py = fromY;
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  for (let i = 1; i <= steps; i++) {
+    const nx = fromX + (toX - fromX) * (i / steps) + (i < steps ? (Math.random() - 0.5) * 30 : 0);
+    const ny = fromY + (toY - fromY) * (i / steps) + (i < steps ? (Math.random() - 0.5) * 30 : 0);
+    ctx.lineTo(nx, ny);
+    px = nx; py = ny;
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+function drawSmoke(t) {
+  for (let i = 0; i < 5; i++) {
+    const sx = CHAIR_X - 5 + (i - 2) * 10;
+    const sy = CHAIR_Y - 140 - (t % 60) * 1.5 - i * 5;
+    const alpha = Math.max(0, 1 - (t % 60) / 60);
+    ctx.fillStyle = `rgba(180,180,180,${alpha * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 8 + i * 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function getPhaseAndState() {
+  if (tick < 80) return { state: 'walking', leverDown: false, capOn: false, zapping: false };
+  if (tick < 140) return { state: 'sitting', leverDown: false, capOn: false, zapping: false };
+  if (tick < 200) return { state: 'capOn', leverDown: false, capOn: true, zapping: false };
+  if (tick < 220) return { state: 'capOn', leverDown: true, capOn: true, zapping: false };
+  return { state: 'zapping', leverDown: true, capOn: true, zapping: true };
+}
+
+function draw() {
+  const { state, leverDown, capOn, zapping } = getPhaseAndState();
+  const zapFlash = zapping && (tick % 6 < 3);
+
+  drawBackground();
+
+  if (zapFlash) {
+    ctx.fillStyle = 'rgba(255,240,100,0.07)';
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  drawChair(leverDown);
+
+  const figPos = drawFigure(state, zapFlash);
+
+  if (capOn) {
+    drawHeadpiece(true, figPos.hx, figPos.hy);
+  }
+
+  if (zapping) {
+    drawSmoke(tick - 220);
+    if (zapFlash) {
+      // lightning from headpiece to back of chair
+      drawLightning(figPos.hx + 14, figPos.hy - 14, CHAIR_X + 45, CHAIR_Y - 90, '#ffe066');
+      drawLightning(figPos.hx, figPos.hy + 10, CHAIR_X - 40, CHAIR_Y + 50, '#66ffee');
+      drawLightning(figPos.hx + 14, figPos.hy - 14, CHAIR_X + 130, CHAIR_Y - 30, '#ff9944');
+    }
+    if (tick > 320) {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ffe066';
+      ctx.font = '500 22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚡ Sequence complete ⚡', W / 2, H / 2);
+      cancelAnimationFrame(animId);
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('startBtn').textContent = '⚡ Restart';
+      document.getElementById('status').textContent = 'Done.';
+      tick = 0;
+      return;
+    }
+  }
+
+  // Status text
+  const msgs = ['Walking to chair...','Taking a seat...','Putting on the headpiece...','Pulling the lever...','⚡ Electrocuting... ⚡'];
+  let msgIdx = 0;
+  if (tick >= 80) msgIdx = 1;
+  if (tick >= 140) msgIdx = 2;
+  if (tick >= 200) msgIdx = 3;
+  if (tick >= 220) msgIdx = 4;
+  document.getElementById('status').textContent = msgs[msgIdx];
+
+  tick++;
+  animId = requestAnimationFrame(draw);
+}
+
+function startAnimation() {
+  if (animId) cancelAnimationFrame(animId);
+  tick = 0;
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('startBtn').textContent = '⚡ Running...';
+  draw();
+}
+</script>
